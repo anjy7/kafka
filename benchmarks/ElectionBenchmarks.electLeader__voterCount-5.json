@@ -1,0 +1,26 @@
+{
+  "benchmark": "org.apache.kafka.jmh.raft.ElectionBenchmarks.electLeader",
+  "counters": {
+    "logFlushesPerOp": 1.0000000000000024,
+    "logReadsPerOp": 1.0000000000000024,
+    "logTruncationsPerOp": 0.0,
+    "quorumStateReadsPerOp": 3.000000000000002,
+    "quorumStateWritesPerOp": 2.000000000000005,
+    "rpcRequestsSentPerOp": 12.000000000000009,
+    "rpcResponsesSentPerOp": 0.0
+  },
+  "history": [
+    {
+      "date": "2026-07-16T17:32:31Z",
+      "gc.alloc.rate": 1655.6698335139843,
+      "gc.alloc.rate.norm": 8935788.213333333,
+      "gc.count": 10.0,
+      "gc.time": 65.0,
+      "score_ns_op": 3652060.453333333,
+      "sha": "24f3ec3d508d57cb3534c7b97cc98da2d4b91c60"
+    }
+  ],
+  "params": {
+    "voterCount": "5"
+  }
+}

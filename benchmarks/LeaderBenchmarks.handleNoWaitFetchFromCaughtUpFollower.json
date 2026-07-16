@@ -1,0 +1,24 @@
+{
+  "benchmark": "org.apache.kafka.jmh.raft.LeaderBenchmarks.handleNoWaitFetchFromCaughtUpFollower",
+  "counters": {
+    "logFlushesPerOp": 0.0,
+    "logReadsPerOp": 0.9999999999999999,
+    "logTruncationsPerOp": 0.0,
+    "quorumStateReadsPerOp": 0.0,
+    "quorumStateWritesPerOp": 0.0,
+    "rpcRequestsSentPerOp": 0.0,
+    "rpcResponsesSentPerOp": 0.9999999999999999
+  },
+  "history": [
+    {
+      "date": "2026-07-16T17:32:31Z",
+      "gc.alloc.rate": 2189.7070908934425,
+      "gc.alloc.rate.norm": 4162.668218160188,
+      "gc.count": 3446.0,
+      "gc.time": 2667.0,
+      "score_ns_op": 1812.6131819359232,
+      "sha": "24f3ec3d508d57cb3534c7b97cc98da2d4b91c60"
+    }
+  ],
+  "params": {}
+}
