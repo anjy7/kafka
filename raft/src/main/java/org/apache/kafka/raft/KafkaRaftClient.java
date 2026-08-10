@@ -3054,6 +3054,14 @@ public final class KafkaRaftClient<T> implements RaftClient<T> {
             LogAppendInfo info = appendAsLeader(batch.data);
             OffsetAndEpoch offsetAndEpoch = new OffsetAndEpoch(info.lastOffset(), epoch);
 
+            // Read values derived from the batch's memory buffer now, before the finally block below
+            // releases that buffer back to the pool. The commit callback runs asynchronously, by which
+            // point the buffer may have been recycled by a newer batch; reading appendTimestamp() /
+            // sizeInBytes() from it then would return the newer batch's data. baseOffset, numRecords,
+            // and records are plain fields (records holds the original objects), so they stay valid.
+            long appendTimestamp = batch.appendTimestamp();
+            int sizeInBytes = batch.sizeInBytes();
+
             appendPurgatory.await(
                 offsetAndEpoch.offset() + 1,
                 Integer.MAX_VALUE
@@ -3071,7 +3079,7 @@ public final class KafkaRaftClient<T> implements RaftClient<T> {
                     kafkaRaftMetrics.updateCommitLatency(elapsedTimePerRecord, appendTimeMs);
                     logger.debug("Completed commit of {} records up to last offset {}", batch.numRecords, offsetAndEpoch);
                     batch.records.ifPresent(records ->
-                        maybeFireHandleCommit(batch.baseOffset, epoch, batch.appendTimestamp(), batch.sizeInBytes(), records)
+                        maybeFireHandleCommit(batch.baseOffset, epoch, appendTimestamp, sizeInBytes, records)
                     );
                 }
             });

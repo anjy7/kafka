@@ -39,6 +39,7 @@ import org.apache.kafka.common.requests.FetchRequest;
 import org.apache.kafka.common.utils.Utils;
 import org.apache.kafka.raft.errors.BufferAllocationException;
 import org.apache.kafka.raft.errors.NotLeaderException;
+import org.apache.kafka.raft.internals.BatchMemoryPool;
 import org.apache.kafka.server.common.KRaftVersion;
 import org.apache.kafka.test.TestUtils;
 
@@ -1767,6 +1768,60 @@ class KafkaRaftClientTest {
         context.deliverRequest(context.fetchRequest(epoch, otherNodeKey, 4L, epoch, 500));
         context.pollUntil(() -> context.client.highWatermark().equals(OptionalLong.of(4L)));
         assertEquals(records, context.listener.commitWithLastOffset(offset));
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = { true, false })
+    public void testCommitCallbackReportsCorrectAppendTimestampAfterBufferReuse(boolean withKip853Rpc) throws Exception {
+        int localId = randomReplicaId();
+        ReplicaKey otherNodeKey = replicaKey(localId + 1, withKip853Rpc);
+        Set<Integer> voters = Set.of(localId, otherNodeKey.id());
+
+        // A real, recycling memory pool is required to expose the bug: MemoryPool.NONE never reuses a
+        // released buffer. maxRetainedBatches=1 forces batch B to reuse batch A's released buffer.
+        RaftClientTestContext context = new RaftClientTestContext.Builder(localId, voters)
+            .withMemoryPool(new BatchMemoryPool(1, KafkaRaftClient.MAX_BATCH_SIZE_BYTES))
+            .withAppendLingerMs(0)
+            .withKip853Rpc(withKip853Rpc)
+            .build();
+
+        context.unattachedToLeader();
+        int epoch = context.currentEpoch();
+
+        // Initialize the high watermark (offset 0 is the leader-change control record).
+        context.deliverRequest(context.fetchRequest(epoch, otherNodeKey, 1L, epoch, 0));
+        context.pollUntilResponse();
+        assertEquals(OptionalLong.of(1L), context.client.highWatermark());
+
+        // Append batch A. It parks uncommitted in the append purgatory and its buffer is released.
+        long appendTimestampA = context.time.milliseconds();
+        long offsetA = context.client.prepareAppend(epoch, List.of("a"));
+        context.client.schedulePreparedAppend();
+        context.poll();
+
+        // Append batch B at a later time; it reuses A's released buffer, overwriting it with B's timestamp.
+        context.time.sleep(1000);
+        long appendTimestampB = context.time.milliseconds();
+        assertNotEquals(appendTimestampA, appendTimestampB);
+        context.client.prepareAppend(epoch, List.of("b"));
+        context.client.schedulePreparedAppend();
+        context.poll();
+
+        // Advance the high watermark so both batches commit and their commit callbacks fire.
+        context.deliverRequest(context.fetchRequest(epoch, otherNodeKey, 3L, epoch, 500));
+        context.pollUntil(() -> context.client.highWatermark().equals(OptionalLong.of(3L)));
+
+        // A's commit callback must report A's own append timestamp, not batch B's timestamp read out of
+        // the buffer that B recycled.
+        Batch<String> committedA = context.listener.committedBatches().stream()
+            .filter(batch -> batch.baseOffset() == offsetA)
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("commit for batch A at offset " + offsetA + " not found"));
+        assertEquals(
+            appendTimestampA,
+            committedA.appendTimestamp(),
+            "commit callback reported the wrong append timestamp (read from a recycled buffer)"
+        );
     }
 
     @ParameterizedTest
