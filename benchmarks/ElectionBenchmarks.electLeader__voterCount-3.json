@@ -18,6 +18,15 @@
       "gc.time": 80.0,
       "score_ns_op": 3910653.36,
       "sha": "24f3ec3d508d57cb3534c7b97cc98da2d4b91c60"
+    },
+    {
+      "date": "2026-08-14T03:33:15Z",
+      "gc.alloc.rate": 1679.1699733946516,
+      "gc.alloc.rate.norm": 8769896.693333333,
+      "gc.count": 13.0,
+      "gc.time": 74.0,
+      "score_ns_op": 3679858.0733333332,
+      "sha": "54da163ca7a5b0357858793a1d20dc3ae233cf49"
     }
   ],
   "params": {
