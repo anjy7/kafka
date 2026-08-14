@@ -203,6 +203,13 @@ def mode_compare(records: List[Record], args: argparse.Namespace) -> int:
                 soft_rows.append((label, SCORE_KEY, mean, score, ok))
 
     print(render(hard_rows, soft_rows, gc_rows, notes, failed, override))
+    if failed:
+        # Also surface the offending counters on stderr so they show in the step's console log,
+        # not only in the rendered $GITHUB_STEP_SUMMARY table.
+        for label, metric, base, cur, ok in hard_rows:
+            if not ok:
+                logger.error("Counter regression: %s / %s: baseline=%s current=%s",
+                             label, metric, fmt(base), fmt(cur))
     if failed and not override:
         logger.error("Hard-gate counter mismatch detected; failing the check.")
         return 1
